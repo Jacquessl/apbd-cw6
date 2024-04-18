@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Microsoft.IdentityModel.Tokens;
 using WebApplication1.Models;
 using WebApplication1.Models.DTO_s;
+using WebApplication1.Repositories;
 
 namespace WebApplication1.Controllers;
 
@@ -9,49 +11,40 @@ namespace WebApplication1.Controllers;
 [Route("/api/animals")]
 public class AnimalsController : ControllerBase
 {
-    private readonly IConfiguration _configuration;
-    public AnimalsController(IConfiguration configuration)
+    private readonly IAnimalRepository _animalRepository;
+    public AnimalsController(IAnimalRepository animalRepository)
     {
-        _configuration = configuration;
+        _animalRepository = animalRepository;
     }
     
-    [HttpGet("{orderBy}")]
-    public IActionResult GetAnimals(String orderBy)
+    [HttpGet]
+    public IActionResult GetAnimals(String? orderBy)
     {
-        using SqlConnection connection = new SqlConnection(_configuration.GetConnectionString("Default"));
-        connection.Open();
-        SqlCommand command = new SqlCommand();
-        command.Connection = connection;
-        command.CommandText = "SELECT * FROM Animal";
-        var reader = command.ExecuteReader();
-        List<Animal> animals = new List<Animal>();
-        while (reader.Read())
+        if (orderBy.IsNullOrEmpty())
         {
-            animals.Add(new Animal(){
-                Id = reader.GetInt32(reader.GetOrdinal("IdAnimal")),
-                Name = reader.GetString(reader.GetOrdinal("Name")),
-                Area = reader.GetString(reader.GetOrdinal("Area")),
-                Category = reader.GetString(reader.GetOrdinal("Category"))
-                });
+            return Ok(_animalRepository.GetAnimals());
         }
-        return Ok(animals);
+        return Ok(_animalRepository.GetAnimals(orderBy));
     }
 
     [HttpPost]
     public IActionResult AddAnimal(AddAnimal addAnimal)
     {
-        using SqlConnection connection = new SqlConnection(_configuration.GetConnectionString("Default"));
-        connection.Open();
-
-        using SqlCommand command = new SqlCommand();
-        command.Connection = connection;
-        command.CommandText = "Inser Into Animals VALUES ({@animalName}, {@animalDesc}, {@animalCat}, {@animalArea})";
-        command.Parameters.AddWithValue("@animalName", addAnimal.Name);
-        command.Parameters.AddWithValue("@animalDesc", addAnimal.Description);
-        command.Parameters.AddWithValue("@animalCat", addAnimal.Category);
-        command.Parameters.AddWithValue("@animalArea", addAnimal.Area);
-
+        _animalRepository.AddAnimal(addAnimal);
         return Created();
     }
-    
+
+    [HttpPut]
+    public IActionResult ChangeAnimal(AddAnimal addAnimal, int idAnimal)
+    {
+        _animalRepository.ChangeAnimal(addAnimal, idAnimal);
+        return Ok();
+    }
+
+    [HttpDelete]
+    public IActionResult DeleteAnimal(int idAnimal)
+    {
+        _animalRepository.DeleteAnimal(idAnimal);
+        return Ok();
+    }
 }
